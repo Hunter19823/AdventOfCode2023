@@ -1,3 +1,6 @@
+from icecream import ic
+
+
 def parse_line(sentence):
     # Split the line by colon
     sentence = sentence.split(':')
@@ -7,9 +10,9 @@ def parse_line(sentence):
     rounds = sentence[1].split(';')
     round_data = [
         [
-            (color, count)
+            (color, int(count))
             for pouch_info in game_round.split(',')
-            for color, count in [pouch_info.strip().split(' ')]
+            for count, color in [pouch_info.strip().split(' ')]
         ]
         for game_round in rounds
     ]
@@ -17,21 +20,41 @@ def parse_line(sentence):
 
 
 def aggregate_round_data(round_data):
-    output = {
-        color: count
-        for game_round in round_data
-        for color, count in game_round
-    }
-    output = {
-        color: max(output[color], count)
-        for game_round in round_data
-        for color, count in game_round
-    }
+    output = dict()
+    for game_round in round_data:
+        for color, count in game_round:
+            if color not in output:
+                output[color] = count
+            output[color] = max(output[color], count)
+
     return output
 
 
+def compare_aggregate_data(agg_data, expectation):
+    for color, count in expectation.items():
+        if color not in agg_data:
+            return False
+        if agg_data[color] > count:
+            return False
+
+    return True
+
+
+expected = {
+    'red': 12,
+    'green': 13,
+    'blue': 14,
+}
+
 with open('input.txt', 'r') as f:
-    # Read the first line
-    line = f.readline()
-    print(line, "=", parse_line(line))
-    print(aggregate_round_data(parse_line(line)[1]))
+    line_data = [
+        parse_line(line)
+        for line in f.readlines()
+    ]
+    i = 0
+    for game_number, data in line_data:
+        aggregate_data = aggregate_round_data(data)
+        if compare_aggregate_data(aggregate_data, expected):
+            i += game_number
+
+    print(i)
