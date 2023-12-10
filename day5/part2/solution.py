@@ -127,13 +127,15 @@ def format_interval(starting_number, interval_range):
     # 5, 3
     # Output:
     #     |--|
+    ending = f"({starting_number}, {interval_range} = {starting_number} - {starting_number + interval_range - 1})"
     if interval_range <= 0:
-        return ' ' * (starting_number - 1) + 'X'
+        return ' ' * (starting_number - 1) + 'X' + ending
     output = ' ' * (starting_number - 1)
     output += '|'
     if interval_range > 1:
-        output += '-' * (interval_range - 1)
+        output += '-' * (interval_range - 2)
         output += '|'
+    output += ending
     return output
 
 
@@ -161,122 +163,61 @@ def map_source_to_possible_destinations(source, destination, value_pair):
     value_start, value_range = value_pair
     value_end = value_start + value_range - 1
     # print("Mapping:", source, destination, value_pair)
-    print(format_interval(value_start, value_range), "Value Pair", value_pair)
+    # print(format_interval(value_start, value_range), "Value Pair", value_pair)
 
     # Store a list of any overlapping ranges, and the destination range they would map to.
     for range_data in source_mappings[source][destination]:
         destination_start, source_start, range_width = range_data
-        print(format_interval(source_start, range_width), "Source", (source_start, range_width))
-        print(
-            format_interval(destination_start, range_width),
-            "Destination", (destination_start, range_width),
-            "( offset=", destination_start - source_start, ")"
-        )
+        # print(format_interval(value_start, value_range), "Remaining Interval", value_pair)
+        # print(format_interval(source_start, range_width), "Source", (source_start, range_width))
+        # print(
+        #     format_interval(destination_start, range_width),
+        #     "Destination",
+        #     "( offset=", destination_start - source_start, ")"
+        # )
         source_end = source_start + range_width - 1
-        # Any intervals that are within the source range, will be mapped to the destination and added to the output
-        # Any intervals that are outside the source range, will be added to the output
+        # Calculate intervals not intersecting the source-range.
 
-        # If the interval is fully to the left of the source-range
-        if value_start < source_start and value_end < source_start:
-            # This interval exists to the left of the source-range, so we can stop looking
-            # and add the value-range to the output
-            output.append((value_start, value_range))
-            # Subtract the interval range from the value-range
-            # Update the value-start to be 1 to the right of the interval end
-            value_range = 0
-            value_start = value_end + 1
-            print(format_interval(output[-1][0], output[-1][1]), "LEFT OF RANGE", output[-1])
+        if value_end < source_start:
+            # If the value-range is entirely to the left of the source-range,
+            # then we can stop looking
+            # print(format_interval(value_start, value_range), "LEFT OF RANGE")
             break
-        # If the interval is fully to the right of the source-range
-        elif value_start > source_end and value_end > source_end:
-            # This interval exists to the right of the source-range, so we can ignore this
-            # range until we find an interval that intersects the source-range
-            print(format_interval(value_start, value_range), "RIGHT OF RANGE", (value_start, value_range))
-            continue
-        # If the interval is fully within the source-range
-        elif value_start >= source_start and value_end <= source_end:
-            # This interval is fully within the source-range, so we map the entire
-            # interval to the destination
-            output.append((destination_start + (value_start - source_start), value_range))
-            # Subtract the interval range from the value-range
-            # Update the value-start to be 1 to the right of the interval end
-            value_range = value_range - value_range
-            value_start = value_end + 1
-            print(format_interval(output[-1][0], output[-1][1]), "FULLY WITHIN RANGE", output[-1])
-            print(format_interval(value_start, value_range), "RIGHT OF RANGE", (value_start, value_range))
-            break
-        # If the interval intersects the left-side of the source-range
-        elif value_start < source_start and value_end <= source_end:
-            # The result is two ranges,
-            # one to the left of the source-range which is unmapped,
-            # and one within the source-range which is mapped to the destination
 
-            # The left-side range is the value-start to the source-start (non-inclusive)
+        if value_start < source_start:
+            # If the value-start is less than the source-start, then we need to add an interval
+            # from the value-start to the source-start (non-inclusive)
             output.append((value_start, source_start - value_start))
+            # print(format_interval(output[-1][0], output[-1][1]), "LEFT OF RANGE (Interval Trimmed)")
+            # Adjust the value-range to be the remaining range
+            value_range -= (source_start - value_start)
+            value_start = source_start
 
-            # The right-side range is the source-start to the value-end (inclusive)
-            output.append((destination_start, value_range - (source_start - value_start)))
-
-            # Subtract the interval range from the value-range
-            # Update the value-start to be 1 to the right of the interval end
-            value_range = value_range - (source_start - value_start)
-            value_start = value_end + 1
-            print(format_interval(output[-2][0], output[-2][1]), "LEFT OUTSIDE RANGE", output[-2])
-            print(format_interval(output[-1][0], output[-1][1]), "INTERSECTS RANGE", output[-1])
-            print(format_interval(value_start, value_range), "RIGHT OF INTERSECTION", (value_start, value_range))
-            break
-        # If the interval intersects the right-side of the source-range
-        elif value_start >= source_start and value_end > source_end:
-            # The result is two ranges,
-            # one within the source-range that is mapped,
-            # and we need to update the value-range and value-start to be the remaining range
-            # starting 1 after the source-end
-
-            # The left-side range is the value-start to the source-end (inclusive)
-            output.append((destination_start + (value_start - source_start), source_end - value_start + 1))
-
-            # Subtract the interval range from the value-range
-            # Update the value-start to be 1 to the right of the interval end
-            value_range = value_range - (source_end - value_start + 1)
+        if source_start <= value_start <= source_end:
+            # If the value-start is within the source-range, then we can map the overlapping range
+            # to the destination
+            mapped_start = destination_start + (value_start - source_start)
+            overlapping_range = min(value_range, source_end - value_start + 1)
+            output.append((mapped_start, overlapping_range))
+            # print(format_interval(output[-1][0], output[-1][1]), "WITHIN_INTERVAL")
+            # Adjust the value-range to be the remaining range
+            value_range -= overlapping_range
             value_start = source_end + 1
 
-            print(format_interval(output[-1][0], output[-1][1]), "INTERSECTS RANGE", output[-1])
-            print(format_interval(value_start, value_range), "RIGHT OF INTERSECTION", (value_start, value_range))
-            break
-
-        # If the interval encompasses the source-range
-
-        # If the value-start is less than the source-start, then we need to add an interval
-        # from the value-start to the source-start (non-inclusive)
-        if value_start < source_start:
-            output.append((value_start, source_start - value_start))
-            print(format_interval(output[-1][0], output[-1][1]), "LEFT OF RANGE", output[-1])
-
-        # Add the mapped range for the intersection of the value-range and the source-range
-        output.append((destination_start, range_width))
-        print(format_interval(output[-1][0], output[-1][1]), "INTERSECTS RANGE", output[-1])
-
-        # Subtract the interval range from the value-range
-        # Update the value-start to be 1 to the right of the interval end
-        value_range = value_range - range_width
-        value_start = source_end + 1
-        print(format_interval(value_start, value_range), "RIGHT OF INTERSECTION", (value_start, value_range))
-
-        # If the value-range is now 0, then we can stop looking
         if value_range == 0:
             break
 
     # If there is any remaining value-range, then we can add it to the output unmapped
     if value_range > 0:
         output.append((value_start, value_range))
-        print(format_interval(output[-1][0], output[-1][1]), "RIGHT OF RANGE ALL RANGES", output[-1])
+        # print(format_interval(output[-1][0], output[-1][1]), "UNMAPPED_REMAINDER")
 
-    print(source, destination, value_pair, '=', output)
+    # print(source, destination, value_pair, '=', output)
 
     return output
 
 
-with open('test-input.txt') as f:
+with open('input.txt') as f:
     initial_seeds += read_initial_seeds(f.readline().strip())
 
     current_line = f.readline()
@@ -325,5 +266,5 @@ for seed in initial_seeds:
 
 locations.sort(key=lambda x: x[0])
 for (start, location_range) in locations:
-    print(format_interval(start, location_range), (start, location_range))
+    print((start, location_range))
 print(locations)
