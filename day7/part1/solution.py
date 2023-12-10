@@ -1,8 +1,5 @@
 from enum import Enum
 
-from icecream import ic
-
-
 def read_file(filename):
     with (open(filename) as f):
         return [
@@ -116,21 +113,6 @@ def get_strength(hand):
             for index, character in enumerate(hand)
         ]
     )
-
-
-def compare_strengths(hand1, hand2):
-    # Compare the first card in each hand.
-    # If the first card in hand1 is greater than the first card in hand2, then hand1 is greater than hand2.
-    # If the first card in hand1 is less than the first card in hand2, then hand1 is less than hand2.
-    # If the first card in hand1 is equal to the first card in hand2, then compare the second card in each hand.
-
-    for card in range(5):
-        if hand1[card] > hand2[card]:
-            return 1
-        if hand1[card] < hand2[card]:
-            return -1
-
-    return 0
 
 
 data = read_file('input.txt')
