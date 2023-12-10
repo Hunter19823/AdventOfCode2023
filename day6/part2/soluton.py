@@ -1,3 +1,4 @@
+import math
 import re
 
 
@@ -22,19 +23,32 @@ def calculate_distance(maximum_time, hold_time):
     return distance_traveled
 
 
-data = read_data('test-input.txt')
+def quadratic_formula(a, b, c):
+    return (
+        (-b + (b ** 2 - 4 * a * c) ** 0.5) / (2 * a),
+        (-b - (b ** 2 - 4 * a * c) ** 0.5) / (2 * a)
+    )
 
-number_of_ways_to_beat_record = 1
+
+data = read_data('input.txt')
+
+plot_points = []
+number_of_ways_to_beat_record = 0
 for time, distance in data:
-    records = []
-    for held_time in range(time+1):
-        records.append((held_time, calculate_distance(time, held_time)))
-
-    records = [
-        record
-        for record in records
-        if record[1] > distance
-    ]
-    number_of_ways_to_beat_record *= len(records)
+    # Times with respect to distance is polynomial.
+    # The polynomial is defined as:
+    #  y = -x^2 + time * x
+    intersections = quadratic_formula(
+        -1,
+        time,
+        -distance
+    )
+    left = math.ceil(intersections[0])
+    right = math.ceil(intersections[1])
+    count = right - left
+    if distance == calculate_distance(time, left):
+        count -= 1
+    print(left, right, right-left, count)
+    number_of_ways_to_beat_record += count
 
 print(number_of_ways_to_beat_record)
